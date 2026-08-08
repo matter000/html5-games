@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>五子棋</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0f1220;
+  --bg-panel: #181c2e;
+  --bg-card: #1e2340;
+  --wood-light: #d4a574;
+  --wood-dark: #b8834a;
+  --gold: #e8c468;
+  --gold-dim: #a08840;
+  --text-primary: #e8e6e3;
+  --text-secondary: #8a8d9b;
+  --red-marker: #e74c3c;
+  --btn-bg: #2a2f4a;
+  --btn-hover: #363c5e;
+  --btn-active: #444b72;
+  --radius: 8px;
+  --font-stack: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-stack);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(232,196,104,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(100,120,200,0.03) 0%, transparent 60%),
+    var(--bg-deep);
+}
+
+/* Header */
+.header {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  align-items: center;
+  padding: 20px 24px 12px;
+  gap: 16px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.back-link:hover { color: var(--gold); }
+.back-link svg { width: 16px; height: 16px; }
+
+.header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+/* Controls bar */
+.controls {
+  width: 100%;
+  max-width: 720px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.status {
+  font-size: 15px;
+  color: var(--gold);
+  font-weight: 500;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.status .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.btn-group { display: flex; gap: 8px; }
+
+.btn {
+  padding: 8px 18px;
+  border: 1px solid rgba(232,196,104,0.15);
+  border-radius: var(--radius);
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: var(--font-stack);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.btn:hover { background: var(--btn-hover); border-color: rgba(232,196,104,0.3); }
+.btn:active { background: var(--btn-active); transform: scale(0.97); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+/* Board container */
+.board-wrap {
+  position: relative;
+  padding: 0 24px 32px;
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  justify-content: center;
+}
+
+canvas#board {
+  display: block;
+  border-radius: 6px;
+  cursor: crosshair;
+  box-shadow:
+    0 2px 20px rgba(0,0,0,0.5),
+    0 0 60px rgba(180,130,60,0.06);
+}
+
+/* Score bar */
+.score-bar {
+  width: 100%;
+  max-width: 720px;
+  padding: 0 24px 24px;
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+}
+.score-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.score-stone {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+}
+.score-stone.black {
+  background: radial-gradient(circle at 35% 35%, #666, #111);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.score-stone.white {
+  background: radial-gradient(circle at 35% 35%, #fff, #bbb);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.score-num {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .header { padding: 14px 16px 8px; }
+  .header h1 { font-size: 18px; }
+  .controls { padding: 0 16px; }
+  .board-wrap { padding: 0 12px 24px; }
+  .score-bar { padding: 0 16px 20px; }
+  .btn { padding: 7px 14px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <a class="back-link" href="../index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    返回
+  </a>
+  <h1>五子棋</h1>
+</div>
+
+<div class="controls">
+  <div class="status" id="status">
+    <span class="dot"></span>
+    <span id="statusText">你的回合</span>
+  </div>
+  <div class="btn-group">
+    <button class="btn" id="btnUndo" disabled>悔棋</button>
+    <button class="btn" id="btnRestart">重新开始</button>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <canvas id="board"></canvas>
+</div>
+
+<div class="score-bar">
+  <div class="score-item">
+    <span class="score-stone black"></span>
+    <span>你</span>
+    <span class="score-num" id="scoreBlack">0</span>
+  </div>
+  <div class="score-item">
+    <span class="score-stone white"></span>
+    <span>AI</span>
+    <span class="score-num" id="scoreWhite">0</span>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ─── Constants ───
+  const SIZE = 15;
+  const EMPTY = 0, BLACK = 1, WHITE = 2;
+  const STAR_POINTS = [[3,3],[3,11],[7,7],[11,3],[11,11]];
+
+  // ─── State ───
+  let grid = [];        // grid[row][col]
+  let history = [];     // [{row, col, player}]
+  let currentPlayer = BLACK;
+  let gameOver = false;
+  let aiThinking = false;
+  let lastMove = null;
+  let scoreBlack = 0, scoreWhite = 0;
+
+  // ─── DOM ───
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const statusText = document.getElementById('statusText');
+  const statusDot = document.querySelector('.status .dot');
+  const btnUndo = document.getElementById('btnUndo');
+  const btnRestart = document.getElementById('btnRestart');
+  const elScoreBlack = document.getElementById('scoreBlack');
+  const elScoreWhite = document.getElementById('scoreWhite');
+
+  // ─── Sizing ───
+  let cellSize, padding, canvasSize;
+
+  function calcSize() {
+    const wrap = document.querySelector('.board-wrap');
+    const maxW = Math.min(wrap.clientWidth - 48, 640);
+    cellSize = Math.floor(maxW / (SIZE + 1));
+    if (cellSize < 20) cellSize = 20;
+    if (cellSize > 42) cellSize = 42;
+    padding = cellSize;
+    canvasSize = cellSize * (SIZE - 1) + padding * 2;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvasSize * dpr;
+    canvas.height = canvasSize * dpr;
+    canvas.style.width = canvasSize + 'px';
+    canvas.style.height = canvasSize + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // ─── Init ───
+  function initGame() {
+    grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(EMPTY));
+    history = [];
+    currentPlayer = BLACK;
+    gameOver = false;
+    aiThinking = false;
+    lastMove = null;
+    updateStatus();
+    btnUndo.disabled = true;
+    draw();
+  }
+
+  // ─── Drawing ───
+  function draw() {
+    drawBoard();
+    drawStones();
+    if (lastMove) drawLastMarker(lastMove.row, lastMove.col);
+  }
+
+  function drawBoard() {
+    // Wood background
+    const grad = ctx.createLinearGradient(0, 0, canvasSize, canvasSize);
+    grad.addColorStop(0, '#d4a574');
+    grad.addColorStop(0.5, '#c8965e');
+    grad.addColorStop(1, '#b8834a');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, canvasSize, canvasSize, 6);
+    ctx.fill();
+
+    // Subtle wood grain
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    for (let i = 0; i < canvasSize; i += 6) {
+      ctx.fillStyle = i % 12 === 0 ? '#000' : '#fff';
+      ctx.fillRect(0, i, canvasSize, 1);
+    }
+    ctx.restore();
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(60, 40, 20, 0.6)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < SIZE; i++) {
+      const pos = padding + i * cellSize;
+      ctx.beginPath();
+      ctx.moveTo(padding, pos);
+      ctx.lineTo(padding + (SIZE - 1) * cellSize, pos);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos, padding);
+      ctx.lineTo(pos, padding + (SIZE - 1) * cellSize);
+      ctx.stroke();
+    }
+
+    // Star points
+    ctx.fillStyle = 'rgba(60, 40, 20, 0.7)';
+    for (const [r, c] of STAR_POINTS) {
+      const x = padding + c * cellSize;
+      const y = padding + r * cellSize;
+      ctx.beginPath();
+      ctx.arc(x, y, cellSize * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawStones() {
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (grid[r][c] === EMPTY) continue;
+        drawStone(r, c, grid[r][c]);
+      }
+    }
+  }
+
+  function drawStone(row, col, player) {
+    const x = padding + col * cellSize;
+    const y = padding + row * cellSize;
+    const radius = cellSize * 0.43;
+
+    // Shadow
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x + 2, y + 2, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+    ctx.restore();
+
+    // Stone body
+    const grad = ctx.createRadialGradient(
+      x - radius * 0.3, y - radius * 0.3, radius * 0.1,
+      x, y, radius
+    );
+    if (player === BLACK) {
+      grad.addColorStop(0, '#666');
+      grad.addColorStop(0.6, '#2a2a2a');
+      grad.addColorStop(1, '#111');
+    } else {
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.5, '#f0f0f0');
+      grad.addColorStop(1, '#b8b8b8');
+    }
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Subtle rim for white stones
+    if (player === WHITE) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+  }
+
+  function drawLastMarker(row, col) {
+    const x = padding + col * cellSize;
+    const y = padding + row * cellSize;
+    ctx.beginPath();
+    ctx.arc(x, y, cellSize * 0.1, 0, Math.PI * 2);
+    ctx.fillStyle = '#e74c3c';
+    ctx.fill();
+  }
+
+  // ─── Hover preview ───
+  let hoverPos = null;
+  function drawHover(row, col) {
+    if (gameOver || aiThinking || currentPlayer !== BLACK) return;
+    if (grid[row][col] !== EMPTY) return;
+    const x = padding + col * cellSize;
+    const y = padding + row * cellSize;
+    const radius = cellSize * 0.43;
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    const grad = ctx.createRadialGradient(
+      x - radius * 0.3, y - radius * 0.3, radius * 0.1,
+      x, y, radius
+    );
+    grad.addColorStop(0, '#666');
+    grad.addColorStop(1, '#111');
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ─── Input ───
+  function getIntersection(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvasSize / rect.width;
+    const scaleY = canvasSize / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+    const col = Math.round((mx - padding) / cellSize);
+    const row = Math.round((my - padding) / cellSize);
+    if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return null;
+    return { row, col };
+  }
+
+  canvas.addEventListener('click', (e) => {
+    if (gameOver || aiThinking || currentPlayer !== BLACK) return;
+    const pos = getIntersection(e);
+    if (!pos || grid[pos.row][pos.col] !== EMPTY) return;
+    makeMove(pos.row, pos.col, BLACK);
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    const pos = getIntersection(e);
+    if (!pos) {
+      if (hoverPos) { hoverPos = null; draw(); }
+      return;
+    }
+    if (!hoverPos || hoverPos.row !== pos.row || hoverPos.col !== pos.col) {
+      hoverPos = pos;
+      draw();
+      drawHover(pos.row, pos.col);
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    if (hoverPos) { hoverPos = null; draw(); }
+  });
+
+  // Touch support
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (gameOver || aiThinking || currentPlayer !== BLACK) return;
+    const touch = e.changedTouches[0];
+    const pos = getIntersection(touch);
+    if (!pos || grid[pos.row][pos.col] !== EMPTY) return;
+    makeMove(pos.row, pos.col, BLACK);
+  });
+
+  // ─── Game Logic ───
+  function makeMove(row, col, player) {
+    grid[row][col] = player;
+    history.push({ row, col, player });
+    lastMove = { row, col };
+
+    if (checkWin(row, col, player)) {
+      gameOver = true;
+      if (player === BLACK) scoreBlack++;
+      else scoreWhite++;
+      updateScores();
+      updateStatus();
+      draw();
+      return;
+    }
+
+    if (history.length === SIZE * SIZE) {
+      gameOver = true;
+      updateStatus();
+      draw();
+      return;
+    }
+
+    currentPlayer = player === BLACK ? WHITE : BLACK;
+    updateStatus();
+    btnUndo.disabled = false;
+    draw();
+
+    if (currentPlayer === WHITE && !gameOver) {
+      aiThinking = true;
+      updateStatus();
+      setTimeout(() => {
+        aiPlay();
+        aiThinking = false;
+        updateStatus();
+      }, 150);
+    }
+  }
+
+  function checkWin(row, col, player) {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    for (const [dr, dc] of dirs) {
+      let count = 1;
+      for (let d = 1; d < 5; d++) {
+        const r = row + dr * d, c = col + dc * d;
+        if (r < 0 || r >= SIZE || c < 0 || c >= SIZE || grid[r][c] !== player) break;
+        count++;
+      }
+      for (let d = 1; d < 5; d++) {
+        const r = row - dr * d, c = col - dc * d;
+        if (r < 0 || r >= SIZE || c < 0 || c >= SIZE || grid[r][c] !== player) break;
+        count++;
+      }
+      if (count >= 5) return true;
+    }
+    return false;
+  }
+
+  // ─── AI ───
+  function aiPlay() {
+    const move = findBestMove();
+    if (move) makeMove(move.row, move.col, WHITE);
+  }
+
+  function findBestMove() {
+    let bestScore = -1;
+    let bestMoves = [];
+
+    // Only consider positions near existing stones
+    const candidates = getCandidates();
+    if (candidates.length === 0) {
+      // First move: play center
+      return { row: 7, col: 7 };
+    }
+
+    for (const { row, col } of candidates) {
+      const score = evaluatePosition(row, col);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMoves = [{ row, col }];
+      } else if (score === bestScore) {
+        bestMoves.push({ row, col });
+      }
+    }
+
+    // Random among ties
+    return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+  }
+
+  function getCandidates() {
+    const set = new Set();
+    const range = 2;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (grid[r][c] !== EMPTY) {
+          for (let dr = -range; dr <= range; dr++) {
+            for (let dc = -range; dc <= range; dc++) {
+              const nr = r + dr, nc = c + dc;
+              if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === EMPTY) {
+                set.add(nr * SIZE + nc);
+              }
+            }
+          }
+        }
+      }
+    }
+    return Array.from(set).map(v => ({ row: Math.floor(v / SIZE), col: v % SIZE }));
+  }
+
+  function evaluatePosition(row, col) {
+    // Score both attack (AI=WHITE) and defense (player=BLACK)
+    const attackScore = evaluateForPlayer(row, col, WHITE);
+    const defenseScore = evaluateForPlayer(row, col, BLACK);
+    // Attack slightly prioritized when scores are close, but defense is critical
+    return attackScore * 1.0 + defenseScore * 1.1;
+  }
+
+  function evaluateForPlayer(row, col, player) {
+    const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+    let totalScore = 0;
+
+    for (const [dr, dc] of dirs) {
+      totalScore += evaluateDirection(row, col, dr, dc, player);
+    }
+    return totalScore;
+  }
+
+  function evaluateDirection(row, col, dr, dc, player) {
+    // Count consecutive stones and open ends in one direction
+    let count = 1;
+    let block = 0;
+    let empty1 = 0, empty2 = 0;
+
+    // Forward
+    for (let i = 1; i <= 4; i++) {
+      const r = row + dr * i, c = col + dc * i;
+      if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) { block++; break; }
+      if (grid[r][c] === player) {
+        count++;
+      } else if (grid[r][c] === EMPTY) {
+        empty1 = 1;
+        // Check if there's another stone after the gap (for jump patterns)
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === player) {
+          // Pattern like XX_X - still valuable
+        }
+        break;
+      } else {
+        block++;
+        break;
+      }
+    }
+
+    // Backward
+    for (let i = 1; i <= 4; i++) {
+      const r = row - dr * i, c = col - dc * i;
+      if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) { block++; break; }
+      if (grid[r][c] === player) {
+        count++;
+      } else if (grid[r][c] === EMPTY) {
+        empty2 = 1;
+        break;
+      } else {
+        block++;
+        break;
+      }
+    }
+
+    return scorePattern(count, block, empty1 + empty2);
+  }
+
+  function scorePattern(count, block, empty) {
+    // Scoring table based on gomoku pattern analysis
+    if (count >= 5) return 100000;
+
+    if (block === 0) {
+      // Both ends open
+      switch (count) {
+        case 4: return 10000;   // Live four
+        case 3: return 1000;    // Live three
+        case 2: return 100;     // Live two
+        case 1: return 10;
+      }
+    } else if (block === 1) {
+      // One end blocked
+      switch (count) {
+        case 4: return 5000;    // Rush four (must block)
+        case 3: return 100;     // Sleep three
+        case 2: return 10;      // Sleep two
+        case 1: return 1;
+      }
+    } else {
+      // Both ends blocked
+      if (count >= 4) return 0; // Dead
+      switch (count) {
+        case 3: return 0;       // Dead three
+        case 2: return 0;       // Dead two
+        case 1: return 0;
+      }
+    }
+    return 0;
+  }
+
+  // ─── Undo ───
+  function undo() {
+    if (gameOver || aiThinking || history.length < 2) return;
+    // Remove AI move + player move
+    for (let i = 0; i < 2; i++) {
+      const move = history.pop();
+      if (move) {
+        grid[move.row][move.col] = EMPTY;
+      }
+    }
+    currentPlayer = BLACK;
+    lastMove = history.length > 0 ? history[history.length - 1] : null;
+    btnUndo.disabled = history.length < 2;
+    updateStatus();
+    draw();
+  }
+
+  // ─── Status ───
+  function updateStatus() {
+    statusDot.style.display = '';
+    if (gameOver) {
+      statusDot.style.display = 'none';
+      if (history.length === SIZE * SIZE && !checkLastMoveWin()) {
+        statusText.textContent = '平局';
+      } else {
+        const winner = history[history.length - 1]?.player;
+        statusText.textContent = winner === BLACK ? '你赢了！' : 'AI 赢了';
+      }
+    } else if (aiThinking) {
+      statusText.textContent = 'AI 思考中…';
+    } else {
+      statusText.textContent = '你的回合';
+    }
+  }
+
+  function checkLastMoveWin() {
+    if (history.length === 0) return false;
+    const last = history[history.length - 1];
+    return checkWin(last.row, last.col, last.player);
+  }
+
+  function updateScores() {
+    elScoreBlack.textContent = scoreBlack;
+    elScoreWhite.textContent = scoreWhite;
+  }
+
+  // ─── Buttons ───
+  btnUndo.addEventListener('click', undo);
+  btnRestart.addEventListener('click', () => {
+    initGame();
+  });
+
+  // ─── Resize ───
+  function onResize() {
+    calcSize();
+    draw();
+  }
+  window.addEventListener('resize', onResize);
+
+  // ─── Start ───
+  calcSize();
+  initGame();
+})();
+</script>
+</body>
+</html>

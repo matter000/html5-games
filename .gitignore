@@ -1,0 +1,7 @@
+# IDE / 工具内部目录
+.codegraph/
+.omo/
+.playwright-mcp/
+
+# 截图检查产物
+*.png

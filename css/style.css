@@ -1,0 +1,427 @@
+/* ============================================
+   游戏乐园 — Game Paradise
+   Dark neon theme with glassmorphism cards
+   ============================================ */
+
+/* --- Design Tokens --- */
+:root {
+  /* Surface */
+  --bg-deep: #07091a;
+  --bg-base: #0c1024;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --bg-card-hover: rgba(255, 255, 255, 0.06);
+
+  /* Neon accents */
+  --neon-purple: #a855f7;
+  --neon-cyan: #22d3ee;
+  --neon-pink: #ec4899;
+  --neon-blue: #3b82f6;
+
+  /* Text */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(168, 85, 247, 0.4);
+
+  /* Spacing scale (8px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 200ms;
+  --duration-normal: 350ms;
+}
+
+/* --- Reset & Base --- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* --- Atmospheric Background --- */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(168, 85, 247, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(34, 211, 238, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(236, 72, 153, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Subtle noise texture overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* --- Layout Container --- */
+.page-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}
+
+/* --- Header / Hero --- */
+.site-header {
+  padding: var(--space-9) 0 var(--space-7);
+  text-align: center;
+}
+
+.site-title {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  background: linear-gradient(
+    135deg,
+    var(--neon-purple) 0%,
+    var(--neon-cyan) 50%,
+    var(--neon-pink) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: var(--space-4);
+  position: relative;
+}
+
+/* Shimmer animation on title */
+.site-title::after {
+  content: "游戏乐园";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 45%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.15) 55%,
+    transparent 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% 100%;
+  animation: shimmer 6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 200% center; }
+  50% { background-position: -200% center; }
+}
+
+.site-subtitle {
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--text-secondary);
+  font-weight: 400;
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* Decorative divider */
+.header-divider {
+  width: 80px;
+  height: 2px;
+  margin: var(--space-6) auto 0;
+  background: linear-gradient(90deg, var(--neon-purple), var(--neon-cyan));
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+/* --- Game Grid --- */
+.games-section {
+  flex: 1;
+  padding: var(--space-5) 0 var(--space-8);
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+/* --- Game Card --- */
+.game-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-7) var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    background var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+  cursor: pointer;
+  outline: none;
+}
+
+/* Glow border on hover — uses pseudo-element for gradient border */
+.game-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--card-accent, var(--neon-purple)),
+    transparent 40%,
+    transparent 60%,
+    var(--card-accent-end, var(--neon-cyan))
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out);
+  pointer-events: none;
+}
+
+/* Ambient glow behind card on hover */
+.game-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    var(--card-accent, var(--neon-purple)),
+    transparent 70%
+  );
+  opacity: 0;
+  filter: blur(30px);
+  transition: opacity var(--duration-normal) var(--ease-out);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.game-card:hover,
+.game-card:focus-visible {
+  transform: translateY(-6px);
+  background: var(--bg-card-hover);
+  border-color: transparent;
+  box-shadow:
+    0 20px 40px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.game-card:hover::before,
+.game-card:focus-visible::before {
+  opacity: 1;
+}
+
+.game-card:hover::after,
+.game-card:focus-visible::after {
+  opacity: 0.15;
+}
+
+.game-card:focus-visible {
+  outline: 2px solid var(--neon-purple);
+  outline-offset: 4px;
+}
+
+/* Card icon (emoji) */
+.game-card__icon {
+  font-size: 3.5rem;
+  line-height: 1;
+  margin-bottom: var(--space-4);
+  transition: transform var(--duration-normal) var(--ease-out);
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.game-card:hover .game-card__icon,
+.game-card:focus-visible .game-card__icon {
+  transform: scale(1.15);
+}
+
+/* Card title */
+.game-card__title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+  letter-spacing: 0.01em;
+}
+
+/* Card description */
+.game-card__desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 240px;
+}
+
+/* --- Per-card accent colors --- */
+.game-card[data-game="snake"] {
+  --card-accent: #22c55e;
+  --card-accent-end: #06b6d4;
+}
+
+.game-card[data-game="tetris"] {
+  --card-accent: #3b82f6;
+  --card-accent-end: #a855f7;
+}
+
+.game-card[data-game="minesweeper"] {
+  --card-accent: #f59e0b;
+  --card-accent-end: #ef4444;
+}
+
+.game-card[data-game="2048"] {
+  --card-accent: #f97316;
+  --card-accent-end: #eab308;
+}
+
+.game-card[data-game="memory"] {
+  --card-accent: #ec4899;
+  --card-accent-end: #a855f7;
+}
+
+.game-card[data-game="gomoku"] {
+  --card-accent: #06b6d4;
+  --card-accent-end: #3b82f6;
+}
+
+/* --- Footer --- */
+.site-footer {
+  padding: var(--space-6) 0;
+  text-align: center;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.site-footer p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- Responsive: Tablet (2 columns) --- */
+@media (max-width: 960px) {
+  .games-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+  }
+
+  .site-header {
+    padding: var(--space-7) 0 var(--space-6);
+  }
+}
+
+/* --- Responsive: Mobile (1 column) --- */
+@media (max-width: 600px) {
+  .games-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+
+  .game-card {
+    flex-direction: row;
+    text-align: left;
+    padding: var(--space-5);
+    gap: var(--space-4);
+  }
+
+  .game-card__icon {
+    font-size: 2.5rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .game-card__text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .game-card__desc {
+    max-width: none;
+  }
+
+  .site-header {
+    padding: var(--space-6) 0 var(--space-5);
+  }
+
+  .site-title {
+    font-size: 2.2rem;
+  }
+
+  .container {
+    padding: 0 var(--space-4);
+  }
+}
