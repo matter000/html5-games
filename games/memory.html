@@ -435,6 +435,7 @@ body{
   </div>
 </div>
 
+<script src="../js/game-stats.js"></script>
 <script>
 (function(){
   "use strict";
@@ -640,6 +641,8 @@ body{
       setBest(steps);
     }
     bestEl.textContent = formatBest(getBest());
+
+    if(window.GameStats) GameStats.record('memory', 1);
 
     /* Show overlay */
     finalTimeEl.textContent = seconds;

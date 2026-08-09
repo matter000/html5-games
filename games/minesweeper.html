@@ -360,6 +360,7 @@ body {
   <div class="best-record" id="bestRecord"></div>
 </div>
 
+<script src="../js/game-stats.js"></script>
 <script>
 (function() {
   'use strict';
@@ -676,6 +677,7 @@ body {
       bestRecordEl.textContent = '';
     }
 
+    if (window.GameStats) GameStats.record('minesweeper', won ? 1 : 0);
     overlay.classList.add('visible');
   }
 

@@ -227,6 +227,7 @@ canvas#board {
   </div>
 </div>
 
+<script src="../js/game-stats.js"></script>
 <script>
 (() => {
   'use strict';
@@ -480,6 +481,7 @@ canvas#board {
       else scoreWhite++;
       updateScores();
       updateStatus();
+      if (window.GameStats) GameStats.record('gomoku', player === BLACK ? 1 : 0);
       draw();
       return;
     }

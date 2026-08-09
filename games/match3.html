@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>消消乐</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0b0e1a;
+  --surface: #131729;
+  --border: #1e2440;
+  --text: #d8dce8;
+  --text-dim: #5a6280;
+  --cyan: #00e5c8;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --green: #22c55e;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+  user-select: none;
+}
+
+/* ── Top bar ────────────────────────────────── */
+.topbar {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 14px 20px 8px;
+}
+
+.back {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 14px;
+  transition: color .2s;
+  flex-shrink: 0;
+}
+.back:hover { color: var(--cyan); }
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-shadow: 0 0 14px rgba(0, 229, 200, .35);
+  flex: 1;
+  text-align: center;
+  min-width: 80px;
+}
+
+.scores {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  align-items: center;
+}
+.scores .label { color: var(--text-dim); }
+.scores .val { font-weight: 700; min-width: 26px; display: inline-block; text-align: right; transition: transform .15s; }
+.scores .score .val { color: var(--cyan); }
+.scores .time .val { color: var(--amber); }
+.scores .val.pop { animation: pop .35s ease; }
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+.btn-restart {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.btn-restart:hover { color: var(--cyan); border-color: rgba(0,229,200,.4); }
+.btn-restart:active { transform: translateY(1px); }
+
+/* ── Timer bar ─────────────────────────────── */
+.timer-wrap {
+  width: 100%;
+  max-width: 480px;
+  height: 6px;
+  background: var(--surface);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 2px 0 10px;
+  box-shadow: inset 0 0 6px rgba(0,0,0,.5);
+}
+.timer-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  border-radius: 3px;
+  transition: width .2s linear, background .3s;
+  box-shadow: 0 0 10px rgba(0,229,200,.4);
+}
+.timer-bar.mid { background: linear-gradient(90deg, var(--cyan), var(--amber)); }
+.timer-bar.low { background: linear-gradient(90deg, var(--amber), var(--red)); box-shadow: 0 0 12px rgba(239,68,68,.5); }
+
+/* ── Canvas ─────────────────────────────────── */
+.canvas-wrap {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow:
+    0 0 40px rgba(0, 229, 200, .07),
+    0 0 80px rgba(0, 229, 200, .03),
+    inset 0 0 60px rgba(0, 0, 0, .4);
+  touch-action: none;
+  line-height: 0;
+}
+canvas { display: block; width: min(92vw, 480px); height: min(92vw, 480px); }
+
+/* ── Overlay ───────────────────────────────── */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 10, 20, .82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+  z-index: 10;
+}
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 30px 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  max-width: 88%;
+}
+.card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  text-shadow: 0 0 14px rgba(0,229,200,.35);
+}
+.card .stat { font-size: 14px; color: var(--text-dim); margin-bottom: 6px; }
+.card .stat b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.card .stat.best b { color: var(--amber); }
+.card .btn {
+  margin-top: 20px;
+  padding: 11px 32px;
+  background: var(--cyan);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: transform .15s, box-shadow .15s;
+}
+.card .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0, 229, 200, .3); }
+.card .btn:active { transform: translateY(0); }
+.card .hint { margin-top: 12px; font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+
+@media (max-width: 420px) {
+  .topbar { padding: 10px 14px 6px; gap: 6px 10px; }
+  .title { font-size: 15px; letter-spacing: 2px; }
+  .scores { gap: 10px; font-size: 12px; }
+  .btn-restart { padding: 6px 12px; font-size: 12px; }
+  .card { padding: 24px 22px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="back" href="../index.html">← 返回</a>
+  <h1 class="title">消消乐</h1>
+  <div class="scores">
+    <span class="score"><span class="label">分数</span> <span class="val" id="score">0</span></span>
+    <span class="time"><span class="label">时间</span> <span class="val" id="time">60</span></span>
+  </div>
+  <button class="btn-restart" id="restartBtn">重新开始</button>
+</header>
+
+<div class="timer-wrap"><div class="timer-bar" id="timerBar"></div></div>
+
+<div class="canvas-wrap" id="wrap">
+  <canvas id="c"></canvas>
+  <div class="overlay show" id="ovl">
+    <div class="card">
+      <h2 id="ovlTitle">消消乐</h2>
+      <p class="stat" id="ovlLine1">限时 60 秒，消除越多得分越高</p>
+      <p class="stat best" id="ovlLine2" style="display:none">最高分 <b id="finalBest">0</b></p>
+      <button class="btn" id="ovlBtn">开始游戏</button>
+      <p class="hint">点击选中宝石，再点相邻宝石交换<br>或直接拖拽宝石进行交换</p>
+    </div>
+  </div>
+</div>
+
+<script src="../js/game-stats.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  /* ═══════════════════════════════════════════════
+     Config
+     ═══════════════════════════════════════════════ */
+  const GRID     = 8;
+  const TYPES    = 6;
+  const CELL     = 60;
+  const LOGICAL  = GRID * CELL;   // 480
+  const GAME_TIME = 60;          // seconds
+
+  // Gem palette: color + glow + shape
+  const GEMS = [
+    { color: '#ff4d6d', glow: 'rgba(255,77,109,0.55)', shape: 'circle'   }, // 0 red
+    { color: '#4d9bff', glow: 'rgba(77,155,255,0.55)', shape: 'square'   }, // 1 blue
+    { color: '#4dff7a', glow: 'rgba(77,255,122,0.55)', shape: 'triangle' }, // 2 green
+    { color: '#ffd84d', glow: 'rgba(255,216,77,0.55)', shape: 'diamond'  }, // 3 yellow
+    { color: '#b84dff', glow: 'rgba(184,77,255,0.55)', shape: 'hexagon'   }, // 4 purple
+    { color: '#4dffe0', glow: 'rgba(77,255,224,0.55)', shape: 'star'      }, // 5 cyan
+  ];
+
+  /* ═══════════════════════════════════════════════
+     DOM
+     ═══════════════════════════════════════════════ */
+  const canvas    = document.getElementById('c');
+  const ctx       = canvas.getContext('2d');
+  const scoreEl   = document.getElementById('score');
+  const timeEl    = document.getElementById('time');
+  const timerBar  = document.getElementById('timerBar');
+  const ovl       = document.getElementById('ovl');
+  const ovlTitle  = document.getElementById('ovlTitle');
+  const ovlLine1  = document.getElementById('ovlLine1');
+  const ovlLine2  = document.getElementById('ovlLine2');
+  const finalBestEl = document.getElementById('finalBest');
+  const ovlBtn    = document.getElementById('ovlBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  /* ═══════════════════════════════════════════════
+     Canvas (HiDPI)
+     ═══════════════════════════════════════════════ */
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = LOGICAL * dpr;
+  canvas.height = LOGICAL * dpr;
+  ctx.scale(dpr, dpr);
+
+  /* ═══════════════════════════════════════════════
+     State
+     ═══════════════════════════════════════════════ */
+  let grid = [];                  // grid[row][col] = gem | null
+  let selected = null;            // {row, col}
+  let score = 0;
+  let prevScore = 0;
+  let combo = 0;
+  let timeLeft = GAME_TIME;
+  let status = 'ready';            // 'ready' | 'playing' | 'over'
+  let phase = 'idle';              // 'intro' | 'idle' | 'swap' | 'unswap' | 'clear' | 'fall'
+  let lastSwap = null;             // {a:{row,col}, b:{row,col}} for unswap
+  let particles = [];
+  let texts = [];
+  let recorded = false;
+  let bestScore = 0;
+  let rafId = 0;
+  let lastTs = 0;
+
+  if (window.GameStats) {
+    const st = GameStats.getStats('match3');
+    bestScore = st.highScore || 0;
+  }
+
+  /* ═══════════════════════════════════════════════
+     Easing helpers
+     ═══════════════════════════════════════════════ */
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  /* ═══════════════════════════════════════════════
+     Gem factory
+     ═══════════════════════════════════════════════ */
+  function makeGem(type) {
+    return {
+      type,
+      row: 0, col: 0,
+      px: 0, py: 0,
+      mode: 'idle',          // 'idle' | 'enter' | 'swap' | 'fall' | 'die' | 'dead'
+      sx: 0, sy: 0, st: 0, dur: 0,   // swap/enter start
+      vy: 0, bounces: 0,             // fall physics
+      scale: 1, alpha: 1,
+      pop: 0,                         // landing pop pulse 0..1
+    };
+  }
+
+  /* ═══════════════════════════════════════════════
+     Grid init — avoid initial matches
+     ═══════════════════════════════════════════════ */
+  function randomType() { return Math.floor(Math.random() * TYPES); }
+
+  function typeSafeAt(row, col) {
+    // choose a type that does not create a 3-run with left/up neighbours
+    let t, tries = 0;
+    do {
+      t = randomType();
+      tries++;
+      const badH = col >= 2 && grid[row][col-1] && grid[row][col-2] &&
+                    grid[row][col-1].type === t && grid[row][col-2].type === t;
+      const badV = row >= 2 && grid[row-1][col] && grid[row-2][col] &&
+                    grid[row-1][col].type === t && grid[row-2][col].type === t;
+      if (!badH && !badV) break;
+    } while (tries < 20);
+    return t;
+  }
+
+  function initGrid(ts) {
+    grid = [];
+    for (let r = 0; r < GRID; r++) {
+      grid[r] = [];
+      for (let c = 0; c < GRID; c++) {
+        const g = makeGem(typeSafeAt(r, c));
+        g.row = r; g.col = c;
+        g.px = c * CELL; g.py = r * CELL;
+        // entrance animation
+        g.mode = 'enter';
+        g.st = ts + (r + c) * 22;
+        g.dur = 260;
+        g.scale = 0.4;
+        g.alpha = 0;
+        grid[r][c] = g;
+      }
+    }
+    // ensure at least one valid move exists
+    if (!hasValidMove()) reshuffleTypes();
+  }
+
+  /* ═══════════════════════════════════════════════
+     Match detection — returns {set, runs}
+     ═══════════════════════════════════════════════ */
+  function findMatches() {
+    const set = new Set();
+    const runs = [];
+    // horizontal
+    for (let r = 0; r < GRID; r++) {
+      let s = 0;
+      for (let c = 1; c <= GRID; c++) {
+        const cur   = c < GRID ? grid[r][c] : null;
+        const start = grid[r][s];
+        const same  = cur && start && cur.type === start.type;
+        if (!same) {
+          const len = c - s;
+          if (len >= 3) {
+            runs.push(len);
+            for (let k = s; k < c; k++) set.add(r + ',' + k);
+          }
+          s = c;
+        }
+      }
+    }
+    // vertical
+    for (let c = 0; c < GRID; c++) {
+      let s = 0;
+      for (let r = 1; r <= GRID; r++) {
+        const cur   = r < GRID ? grid[r][c] : null;
+        const start = grid[s][c];
+        const same  = cur && start && cur.type === start.type;
+        if (!same) {
+          const len = r - s;
+          if (len >= 3) {
+            runs.push(len);
+            for (let k = s; k < r; k++) set.add(k + ',' + c);
+          }
+          s = r;
+        }
+      }
+    }
+    return { set, runs };
+  }
+
+  /* ═══════════════════════════════════════════════
+     Swap logic
+     ═══════════════════════════════════════════════ */
+  function adjacent(a, b) {
+    return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
+  }
+
+  function swapInGrid(a, b, ts, dur) {
+    const ga = grid[a.row][a.col];
+    const gb = grid[b.row][b.col];
+    if (!ga || !gb) return;
+    grid[a.row][a.col] = gb;
+    grid[b.row][b.col] = ga;
+    ga.row = b.row; ga.col = b.col;
+    gb.row = a.row; gb.col = a.col;
+    // animate from current px/py to new target
+    ga.sx = ga.px; ga.sy = ga.py; ga.st = ts; ga.dur = dur; ga.mode = 'swap';
+    gb.sx = gb.px; gb.sy = gb.py; gb.st = ts; gb.dur = dur; gb.mode = 'swap';
+  }
+
+  function trySwap(a, b, ts) {
+    if (status !== 'playing' || phase !== 'idle') return;
+    if (!adjacent(a, b)) return;
+    if (!grid[a.row][a.col] || !grid[b.row][b.col]) return;
+    swapInGrid(a, b, ts, 170);
+    lastSwap = { a: { row: a.row, col: a.col }, b: { row: b.row, col: b.col } };
+    phase = 'swap';
+  }
+
+  /* ═══════════════════════════════════════════════
+     Clear + drop
+     ═══════════════════════════════════════════════ */
+  function startClear(matchResult, ts) {
+    const { set, runs } = matchResult;
+    // score
+    let pts = 0;
+    for (const len of runs) {
+      pts += len * 10 + (len >= 5 ? 50 : len === 4 ? 20 : 0);
+    }
+    pts *= combo;
+    score += pts;
+    // mark gems dying + particles + centroid
+    let cx = 0, cy = 0, n = 0;
+    set.forEach(key => {
+      const [r, c] = key.split(',').map(Number);
+      const g = grid[r][c];
+      if (g) {
+        g.mode = 'die';
+        g.st = ts;
+        g.dur = 280;
+        spawnParticles(c * CELL + CELL/2, r * CELL + CELL/2, GEMS[g.type].color, GEMS[g.type].glow);
+        cx += c * CELL + CELL/2;
+        cy += r * CELL + CELL/2;
+        n++;
+      }
+    });
+    // floating +points text
+    if (n > 0) {
+      addText(cx / n, cy / n, '+' + pts, '#ffffff', 900, 22);
+    }
+    // combo text
+    if (combo >= 2) {
+      addText(LOGICAL/2, LOGICAL/2 - 30, 'Combo x' + combo + '!', '#ffd84d', 1100, 30);
+    }
+    phase = 'clear';
+  }
+
+  function removeDead() {
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const g = grid[r][c];
+        if (g && g.mode === 'dead') grid[r][c] = null;
+      }
+    }
+  }
+
+  function applyDrop(ts) {
+    for (let c = 0; c < GRID; c++) {
+      // compact existing gems downward
+      let writeRow = GRID - 1;
+      for (let r = GRID - 1; r >= 0; r--) {
+        const g = grid[r][c];
+        if (g) {
+          if (r !== writeRow) {
+            grid[writeRow][c] = g;
+            g.row = writeRow;
+            g.col = c;
+            g.mode = 'fall';
+            g.vy = 0;
+            g.bounces = 0;
+            // py stays at old position -> will fall to writeRow*CELL
+            grid[r][c] = null;
+          }
+          writeRow--;
+        }
+      }
+      // fill remaining top rows with new gems falling from above
+      const emptyCount = writeRow + 1;
+      for (let r = writeRow; r >= 0; r--) {
+        const g = makeGem(randomType());
+        g.row = r; g.col = c;
+        g.px = c * CELL;
+        g.py = -(emptyCount - r) * CELL;   // higher rows start higher up
+        g.mode = 'fall';
+        g.vy = 0;
+        g.bounces = 0;
+        grid[r][c] = g;
+      }
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     Phase machine — driven by completion checks
+     ═══════════════════════════════════════════════ */
+  const GRAVITY = 2600;   // px/s^2
+  const BOUNCE  = 0.34;
+  const SWAP_DUR = 170;
+
+  function isProcessing() {
+    return phase === 'swap' || phase === 'unswap' || phase === 'clear' || phase === 'fall';
+  }
+
+  function allSettled() {
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const g = grid[r][c];
+        if (g && (g.mode === 'swap' || g.mode === 'fall' || g.mode === 'die' || g.mode === 'enter')) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  function advancePhase(ts) {
+    if (phase === 'swap') {
+      const m = findMatches();
+      if (m.set.size > 0) {
+        combo = 1;
+        startClear(m, ts);
+      } else {
+        // no match -> swap back
+        if (lastSwap) {
+          swapInGrid(lastSwap.a, lastSwap.b, ts, SWAP_DUR);
+          phase = 'unswap';
+        } else {
+          phase = 'idle';
+        }
+      }
+    } else if (phase === 'unswap') {
+      lastSwap = null;
+      phase = 'idle';
+    } else if (phase === 'clear') {
+      removeDead();
+      applyDrop(ts);
+      phase = 'fall';
+    } else if (phase === 'fall') {
+      const m = findMatches();
+      if (m.set.size > 0) {
+        combo++;
+        startClear(m, ts);
+      } else {
+        combo = 0;
+        phase = 'idle';
+        if (!hasValidMove()) {
+          reshuffleTypes();
+          addText(LOGICAL/2, LOGICAL/2, '无可用步数 · 重新洗牌', '#00e5c8', 1300, 22);
+        }
+      }
+    } else if (phase === 'intro') {
+      phase = 'idle';
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     No-moves detection + reshuffle
+     ═══════════════════════════════════════════════ */
+  function swapTypesTemp(a, b) {
+    const ga = grid[a.row][a.col], gb = grid[b.row][b.col];
+    if (!ga || !gb) return;
+    const t = ga.type; ga.type = gb.type; gb.type = t;
+  }
+
+  function hasValidMove() {
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        if (c < GRID - 1) {
+          swapTypesTemp({row:r,col:c}, {row:r,col:c+1});
+          const has = findMatches().set.size > 0;
+          swapTypesTemp({row:r,col:c}, {row:r,col:c+1});
+          if (has) return true;
+        }
+        if (r < GRID - 1) {
+          swapTypesTemp({row:r,col:c}, {row:r+1,col:c});
+          const has = findMatches().set.size > 0;
+          swapTypesTemp({row:r,col:c}, {row:r+1,col:c});
+          if (has) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function reshuffleTypes() {
+    // collect types, shuffle, reassign while avoiding initial matches
+    const types = [];
+    for (let r = 0; r < GRID; r++)
+      for (let c = 0; c < GRID; c++)
+        if (grid[r][c]) types.push(grid[r][c].type);
+    let attempts = 0;
+    do {
+      // Fisher-Yates
+      for (let i = types.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [types[i], types[j]] = [types[j], types[i]];
+      }
+      let idx = 0;
+      for (let r = 0; r < GRID; r++)
+        for (let c = 0; c < GRID; c++)
+          if (grid[r][c]) grid[r][c].type = types[idx++];
+      attempts++;
+      if (findMatches().set.size === 0 && hasValidMove()) break;
+    } while (attempts < 30);
+  }
+
+  /* ═══════════════════════════════════════════════
+     Particles & floating text
+     ═══════════════════════════════════════════════ */
+  function spawnParticles(x, y, color, glow) {
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      const ang = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const spd = 60 + Math.random() * 120;
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd - 40,
+        life: 1,
+        decay: 1.6 + Math.random() * 1.2,
+        size: 2 + Math.random() * 3,
+        color,
+      });
+    }
+  }
+
+  function addText(x, y, text, color, life, size) {
+    texts.push({ x, y, text, color, life, maxLife: life, size, vy: -36 });
+  }
+
+  /* ═══════════════════════════════════════════════
+     Update
+     ═══════════════════════════════════════════════ */
+  function updateGems(dt, ts) {
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        const g = grid[r][c];
+        if (!g) continue;
+        const tx = g.col * CELL;
+        const ty = g.row * CELL;
+
+        if (g.mode === 'enter') {
+          if (ts < g.st) continue;
+          let t = (ts - g.st) / g.dur;
+          if (t >= 1) { t = 1; g.mode = 'idle'; }
+          const e = easeOutCubic(t);
+          g.scale = lerp(0.4, 1, e);
+          g.alpha = t;
+          g.px = tx; g.py = ty;
+        } else if (g.mode === 'swap') {
+          let t = (ts - g.st) / g.dur;
+          if (t >= 1) { t = 1; g.mode = 'idle'; }
+          const e = easeOutQuad(t);
+          g.px = lerp(g.sx, tx, e);
+          g.py = lerp(g.sy, ty, e);
+        } else if (g.mode === 'fall') {
+          g.vy += GRAVITY * dt;
+          g.py += g.vy * dt;
+          if (g.py >= ty) {
+            g.py = ty;
+            if (Math.abs(g.vy) > 90 && g.bounces < 2) {
+              g.vy = -g.vy * BOUNCE;
+              g.bounces++;
+              g.pop = 1;
+            } else {
+              g.vy = 0;
+              g.mode = 'idle';
+              g.pop = 1;
+            }
+          }
+        } else if (g.mode === 'die') {
+          let t = (ts - g.st) / g.dur;
+          if (t >= 1) { t = 1; g.mode = 'dead'; g.scale = 0; g.alpha = 0; }
+          else if (t < 0.25) {
+            g.scale = 1 + (t / 0.25) * 0.3;
+            g.alpha = 1;
+          } else {
+            g.scale = 1.3 * (1 - (t - 0.25) / 0.75);
+            g.alpha = 1 - (t - 0.25) / 0.75;
+          }
+        }
+
+        // landing pop pulse decay
+        if (g.pop > 0) {
+          g.pop -= dt * 5;
+          if (g.pop < 0) g.pop = 0;
+        }
+      }
+    }
+  }
+
+  function updateParticles(dt) {
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 180 * dt;
+      p.vx *= 0.96;
+      p.life -= p.decay * dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+  }
+
+  function updateTexts(dt) {
+    for (let i = texts.length - 1; i >= 0; i--) {
+      const t = texts[i];
+      t.y += t.vy * dt;
+      t.vy *= 0.92;
+      t.life -= dt * 1000;
+      if (t.life <= 0) texts.splice(i, 1);
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     Render
+     ═══════════════════════════════════════════════ */
+  function roundRectPath(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function gemPath(type, cx, cy, r) {
+    ctx.beginPath();
+    switch (type) {
+      case 0: // circle
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        break;
+      case 1: { // square (rounded)
+        const s = r * 1.55;
+        roundRectPath(cx - s/2, cy - s/2, s, s, r * 0.32);
+        break;
+      }
+      case 2: // triangle
+        ctx.moveTo(cx, cy - r * 1.05);
+        ctx.lineTo(cx + r * 0.95, cy + r * 0.72);
+        ctx.lineTo(cx - r * 0.95, cy + r * 0.72);
+        ctx.closePath();
+        break;
+      case 3: // diamond
+        ctx.moveTo(cx, cy - r * 1.1);
+        ctx.lineTo(cx + r * 1.1, cy);
+        ctx.lineTo(cx, cy + r * 1.1);
+        ctx.lineTo(cx - r * 1.1, cy);
+        ctx.closePath();
+        break;
+      case 4: // hexagon
+        for (let i = 0; i < 6; i++) {
+          const a = Math.PI / 6 + i * Math.PI / 3;
+          const x = cx + Math.cos(a) * r;
+          const y = cy + Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        break;
+      case 5: // 5-point star
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + i * Math.PI / 5;
+          const rr = i % 2 === 0 ? r * 1.05 : r * 0.46;
+          const x = cx + Math.cos(a) * rr;
+          const y = cy + Math.sin(a) * rr;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        break;
+    }
+  }
+
+  function drawBoard() {
+    // subtle checker cells
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID; c++) {
+        ctx.fillStyle = ((r + c) % 2 === 0) ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.12)';
+        ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+      }
+    }
+    // grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < GRID; i++) {
+      const p = i * CELL + 0.5;
+      ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, LOGICAL); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(LOGICAL, p); ctx.stroke();
+    }
+  }
+
+  function drawGem(g) {
+    if (!g || g.mode === 'dead' || g.alpha <= 0) return;
+    const cx = g.px + CELL / 2;
+    const cy = g.py + CELL / 2;
+    const cfg = GEMS[g.type];
+    const r = CELL * 0.32;
+    // landing pop: squash scale slightly (x/y uniform for simplicity -> scale pulse)
+    let s = g.scale;
+    if (g.pop > 0) s *= 1 + Math.sin(g.pop * Math.PI) * 0.12;
+
+    ctx.save();
+    ctx.globalAlpha = clamp(g.alpha, 0, 1);
+    ctx.translate(cx, cy);
+    ctx.scale(s, s);
+    ctx.translate(-cx, -cy);
+
+    // glow
+    ctx.shadowColor = cfg.glow;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = cfg.color;
+    gemPath(g.type, cx, cy, r);
+    ctx.fill();
+
+    // inner highlight
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.3, cy - r * 0.32, r * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawSelected(ts) {
+    if (!selected) return;
+    const g = grid[selected.row][selected.col];
+    if (!g) return;
+    const pulse = 0.5 + 0.5 * Math.sin(ts * 0.008);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,229,200,' + (0.55 + 0.4 * pulse) + ')';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'rgba(0,229,200,0.85)';
+    ctx.shadowBlur = 16;
+    roundRectPath(selected.col * CELL + 3, selected.row * CELL + 3, CELL - 6, CELL - 6, 8);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      ctx.globalAlpha = clamp(p.life, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+
+  function drawTexts() {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const t of texts) {
+      const a = clamp(t.life / t.maxLife, 0, 1);
+      ctx.globalAlpha = a;
+      ctx.font = '700 ' + t.size + 'px "PingFang SC","Microsoft YaHei",system-ui,sans-serif';
+      ctx.fillStyle = t.color;
+      ctx.shadowColor = t.color;
+      ctx.shadowBlur = 14;
+      ctx.fillText(t.text, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+
+  function render(ts) {
+    ctx.fillStyle = '#0b0e1a';
+    ctx.fillRect(0, 0, LOGICAL, LOGICAL);
+    drawBoard();
+    // draw gems (skip dead)
+    for (let r = 0; r < GRID; r++)
+      for (let c = 0; c < GRID; c++)
+        drawGem(grid[r][c]);
+    drawSelected(ts);
+    drawParticles();
+    drawTexts();
+  }
+
+  /* ═══════════════════════════════════════════════
+     UI sync
+     ═══════════════════════════════════════════════ */
+  function syncUI() {
+    if (score !== prevScore) {
+      scoreEl.textContent = score;
+      scoreEl.classList.remove('pop');
+      // force reflow to restart animation
+      void scoreEl.offsetWidth;
+      scoreEl.classList.add('pop');
+      prevScore = score;
+    }
+    const t = Math.max(0, Math.ceil(timeLeft));
+    timeEl.textContent = t;
+    const pct = clamp(timeLeft / GAME_TIME, 0, 1) * 100;
+    timerBar.style.width = pct + '%';
+    timerBar.classList.toggle('low', timeLeft <= 10);
+    timerBar.classList.toggle('mid', timeLeft > 10 && timeLeft <= 25);
+  }
+
+  /* ═══════════════════════════════════════════════
+     Game flow
+     ═══════════════════════════════════════════════ */
+  function startGame(ts) {
+    recorded = false;
+    score = 0; prevScore = 0;
+    combo = 0;
+    timeLeft = GAME_TIME;
+    selected = null;
+    particles = [];
+    texts = [];
+    lastSwap = null;
+    initGrid(ts || performance.now());
+    phase = 'intro';
+    status = 'playing';
+    hideOverlay();
+    scoreEl.textContent = '0';
+    timeEl.textContent = GAME_TIME;
+    timerBar.style.width = '100%';
+    timerBar.classList.remove('low', 'mid');
+  }
+
+  function gameOver() {
+    if (status === 'over') return;
+    status = 'over';
+    selected = null;
+    if (!recorded) {
+      if (window.GameStats) GameStats.record('match3', score);
+      if (window.GameStats) bestScore = Math.max(bestScore, GameStats.getStats('match3').highScore || 0);
+      recorded = true;
+    }
+    // show overlay
+    ovlTitle.textContent = '游戏结束';
+    ovlLine1.innerHTML = '本局得分 <b>' + score + '</b>';
+    ovlLine2.style.display = 'block';
+    finalBestEl.textContent = bestScore;
+    ovlBtn.textContent = '再来一局';
+    setTimeout(() => ovl.classList.add('show'), 250);
+  }
+
+  function hideOverlay() { ovl.classList.remove('show'); }
+
+  /* ═══════════════════════════════════════════════
+     Main loop
+     ═══════════════════════════════════════════════ */
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    updateGems(dt, ts);
+    updateParticles(dt);
+    updateTexts(dt);
+
+    if (status === 'playing') {
+      if (phase === 'idle') {
+        timeLeft -= dt;
+        if (timeLeft <= 0) { timeLeft = 0; gameOver(); }
+      }
+      if ((isProcessing() || phase === 'intro') && allSettled()) {
+        advancePhase(ts);
+      }
+    }
+
+    render(ts);
+    syncUI();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  /* ═══════════════════════════════════════════════
+     Input (pointer: unified mouse + touch)
+     ═══════════════════════════════════════════════ */
+  function cellFromEvent(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (LOGICAL / rect.width);
+    const y = (e.clientY - rect.top) * (LOGICAL / rect.height);
+    const col = Math.floor(x / CELL);
+    const row = Math.floor(y / CELL);
+    if (row < 0 || row >= GRID || col < 0 || col >= GRID) return null;
+    return { row, col };
+  }
+
+  let dragStart = null;     // {cell, x, y, dragged}
+  const DRAG_THRESH = CELL * 0.35;
+
+  canvas.addEventListener('pointerdown', (e) => {
+    if (status !== 'playing' || phase !== 'idle') return;
+    const cell = cellFromEvent(e);
+    if (!cell) return;
+    canvas.setPointerCapture(e.pointerId);
+    dragStart = { cell, x: e.clientX, y: e.clientY, dragged: false };
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragStart || dragStart.dragged) return;
+    const dx = e.clientX - dragStart.x;
+    const dy = e.clientY - dragStart.y;
+    if (Math.abs(dx) < DRAG_THRESH && Math.abs(dy) < DRAG_THRESH) return;
+    // determine direction
+    let target;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      target = { row: dragStart.cell.row, col: dragStart.cell.col + (dx > 0 ? 1 : -1) };
+    } else {
+      target = { row: dragStart.cell.row + (dy > 0 ? 1 : -1), col: dragStart.cell.col };
+    }
+    if (target.row >= 0 && target.row < GRID && target.col >= 0 && target.col < GRID) {
+      selected = null;
+      trySwap(dragStart.cell, target, performance.now());
+    }
+    dragStart.dragged = true;
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    if (!dragStart) return;
+    const wasDragged = dragStart.dragged;
+    const startCell = dragStart.cell;
+    dragStart = null;
+    if (wasDragged) return;
+    if (status !== 'playing' || phase !== 'idle') return;
+
+    // tap behaviour: select / swap
+    if (!selected) {
+      selected = startCell;
+      return;
+    }
+    if (selected.row === startCell.row && selected.col === startCell.col) {
+      selected = null; // tap same -> deselect
+      return;
+    }
+    if (adjacent(selected, startCell)) {
+      const a = selected;
+      selected = null;
+      trySwap(a, startCell, performance.now());
+    } else {
+      selected = startCell; // move selection
+    }
+  });
+
+  canvas.addEventListener('pointercancel', () => { dragStart = null; });
+
+  // prevent context menu on long press / right click
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  /* ═══════════════════════════════════════════════
+     Buttons
+     ═══════════════════════════════════════════════ */
+  ovlBtn.addEventListener('click', () => { startGame(performance.now()); });
+  restartBtn.addEventListener('click', () => { startGame(performance.now()); });
+
+  // pause timer when tab hidden
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) lastTs = 0;
+    else lastTs = 0; // reset dt to avoid big jump on resume
+  });
+
+  /* ═══════════════════════════════════════════════
+     Init
+     ═══════════════════════════════════════════════ */
+  // initial idle board behind the overlay (purely decorative)
+  initGrid(performance.now());
+  phase = 'intro';
+  rafId = requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

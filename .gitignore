@@ -3,5 +3,8 @@
 .omo/
 .playwright-mcp/
 
+# 设计草稿目录
+game-paradise-redesign/
+
 # 截图检查产物
 *.png

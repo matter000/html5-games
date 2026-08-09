@@ -353,6 +353,7 @@ body {
   <p class="instructions">方向键 / WASD 移动 &middot; 触屏滑动亦可</p>
 </div>
 
+<script src="../js/game-stats.js"></script>
 <script>
 (function () {
   'use strict';
@@ -655,6 +656,7 @@ body {
       overlaySub.textContent = '最终得分：' + score;
       overlayContinue.classList.add('hidden');
     }
+    if (window.GameStats) GameStats.record('2048', score);
   }
 
   function hideOverlay() {

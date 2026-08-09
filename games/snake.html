@@ -250,6 +250,7 @@
     </nav>
   </main>
 
+  <script src="../js/game-stats.js"></script>
   <script>
   (() => {
     'use strict';
@@ -392,6 +393,7 @@
       }
       finalScoreEl.textContent = score;
       finalBestEl.textContent  = highScore;
+      if (window.GameStats) GameStats.record('snake', score);
       setTimeout(() => overOvl.classList.add('show'), 350);
     }
 

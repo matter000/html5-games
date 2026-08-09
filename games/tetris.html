@@ -390,6 +390,7 @@ body {
   </div>
 </div>
 
+<script src="../js/game-stats.js"></script>
 <script>
 (function() {
   'use strict';
@@ -864,6 +865,7 @@ body {
     finalHighscore.textContent = highScore;
     finalLines.textContent = lines;
     finalLevel.textContent = level;
+    if (window.GameStats) GameStats.record('tetris', score);
     overlay.classList.add('visible');
   }
 
